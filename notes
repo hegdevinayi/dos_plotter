@@ -1,16 +1,17 @@
 [[ Notes to self ]]
 
 input file format:
-element symbol, atom index (range), orbital index (range), label
-for every projection you need
-accept A/a for atom (orbital projected) and orbital (site projected) index range
-have yaml file with default labels given any orbital index range
-default legend: element symbol \sub{atom index range} - label
-reasonable default settings - read ZVAL, VRHFIN from POTCAR
+- element symbol, atom index (range), orbital index (range), label
+- for every projection you need
+- accept A/a for atom (orbital projected) and orbital (site projected) index range
+- have yaml file with default labels given any orbital index range
+- default legend: element symbol \sub{atom index range} - label
+- reasonable default settings - read ZVAL, VRHFIN from POTCAR
 for example, for CdO complete orbital projected DOS:
 Cd 1 1   s
 Cd 1 5-9 d
  O 2 1   s
  O 2 2-4 p
 
-implement spin-polarized versions of the above
+- implement spin-polarized versions of the above
+- functionality to create input files 
