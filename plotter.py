@@ -24,6 +24,9 @@ class DOSPlotter():
     The DOS Plotter class.
     """
     def __init__(self):
+        """
+        initialize all the global variables.
+        """
         self.spin = False
         self.bins = None
         self.tdict = None
@@ -32,6 +35,8 @@ class DOSPlotter():
         self._natoms = None
         self.elems = None
         self.projs = None
+        # currently only supports up to 8 projections.
+        # beyond that, not only does it become hard to distinguish different colors, the information is overwhelming
         self.colors = {'black':(0,0,0), 
                        'orange':(230,159,0), 
                        'skyblue':(86,180,233), 
@@ -53,29 +58,39 @@ class DOSPlotter():
         Reads the total density of states (DOS) data from the specified DOSCAR file,
         and stores the array of energies and DOS in a dictionary tdict.
         """
+        # try reading the specified DOSCAR file
         if not os.path.exists(fdos):
             print "The file you specified does not exist."
             sys.exit(0)
-
         print "Reading %s... " %(fdos), 
         sys.stdout.flush()
+        # open the specified DOSCAR file for reading
         doscar = open(fdos, 'r').readlines()
         sys.stdout.flush()
-
+        # read the number of atoms in the structure
         self.natoms = int(doscar[0].strip().split(" ")[0])
+        # read the energy range, number of bins (NEDOS), fermi energy
         max_en, min_en, bins, fermi, x = [ float(e) for e in doscar[5].strip().split() ]
         self.bins = int(bins)
+        # the total DOS information starts on the 6th line and contains natoms rows
         _tdos = doscar[6:self.bins+6]
+        # if non-spin polarized, the columns are energy, dos, int-dos
+        # if spin-polarized, the columns are energy, dos(up), dos(down), int-dos(up) and int-dos(down)
         ncol = len(_tdos[0].strip().split()) - 1
         if ncol == 4: 
             self.spin = True
+        # create the energy and dos arrays to be used for plotting:
         en = np.zeros(self.bins)
+        # tdos is an array with nbins rows and 2 or 4 columns depending on spin
         tdos = np.zeros((self.bins,ncol))
         for i, t in enumerate(_tdos):
             t = [ float(e) for e in t.strip().split() ]
+            # subtract the fermi energy from all the energies 
             en[i] = t[0] - fermi
             for col in range(ncol):
+                # normalize the total dos by the number of atoms
                 tdos[i][col] = t[col+1]/float(self.natoms)
+        # assign the energy and dos arrays to the global tdict dictionary
         self.tdict = {}
         self.tdict['en'] = en
         self.tdict['tdos'] = tdos
@@ -91,37 +106,50 @@ class DOSPlotter():
         In
         addition, calls the read_poscar() function to read element symbols.
         """
+        # try opening the specified DOSCAR file
         if not os.path.exists(fdos):
+            # open the specified DOSCAR file for reading
             print "The file you specified does not exist."
             sys.exit(0)
-
- 
         print "Reading %s... " %(os.path.abspath(fdos)),
         sys.stdout.flush()
+        # open the specified DOSCAR file for reading
         doscar = open(fdos, 'r').readlines()
         sys.stdout.flush()
-
+        # read the number of atoms
         self.natoms = int(doscar[0].strip().split(" ")[0])
+        # read the energy range, number of bins, fermi energy
         max_en, min_en, bins, fermi, x = [ float(e) for e in doscar[5].strip().split() ]
         self.bins = int(bins)
         ntdos = self.bins+6
         _pdos = doscar[ntdos:]
+        # if LORBIT = 11, the DOSCAR is split into contributions from every atom
+        # so the DOSCAR is split into natoms number of sections or "atomic blocks"
+        # for each atom,
+        # if non-spin polarized, the columns are energy, s, p_x, p_y, p_z, d_xy, d_yz, d_zx, d_z2, d_x2-y2
+        # if spin polarized, the columns are the same as above but for (up) and (down) spin channels - s(up), s(down), so on
         ncol = len(_pdos[1].strip().split()) - 1
         if ncol in [2, 8, 18]: 
             self.spin = True
+        # create the energy and dos arrays to be used for plotting:
         en = np.zeros(self.bins)
+        # pdos is an array with nbins rows and 1, 4, 9, 2, 8, or 18 columns depending on spin, for EVERY atom
         pdos = np.zeros((self.natoms,self.bins,ncol))
         for i, p in enumerate(_pdos[1:self.bins+1]):
+            # subtract the fermi energy from all the energies
             en[i] = float(p.strip().split()[0]) - fermi
         for i, p in enumerate(_pdos):
+            # initialize the bin count to 0 at the beginning of every atomic block
             if i%(self.bins+1) == 0: 
                 nbin = 0
                 continue
+            # which-th atom ("site") does the following atomic block belong to?
             site = i/(self.bins+1)
             p = [ float(e) for e in p.strip().split() ]
             for col in range(ncol):
                 pdos[site][nbin][col] = p[col+1]
             nbin += 1
+        # assign the energy and dos arrays to the global pdict dictionary
         self.pdict = {}
         self.pdict['en'] = en
         self.pdict['pdos'] = pdos
@@ -212,7 +240,7 @@ class DOSPlotter():
             downcolor = kwargs['downcolor']
 
         print "Now plotting... ",
-        fig = plt.figure(figsize=(8,6))
+        fig = plt.figure(figsize=(8,7))
         ax = fig.add_subplot(111)
         if self.spin:
             ax.plot(en, dos[:,0], color=upcolor)
